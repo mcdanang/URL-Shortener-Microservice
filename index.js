@@ -41,58 +41,64 @@ app.listen(port, () => {
 
 app.post('/api/shorturl', (req, res) => {
   const oriUrl = req.body.url;
-  let hostname = oriUrl.replace(/https?:\/\//, "");
-  hostname = hostname.replace(/\/.*/, "");
-  console.log(oriUrl);
-  console.log(hostname);
-  
-  // lookup the hostname passed as argument
-  dns.lookup(hostname, async (error, address, family) => {
+  if (/https?/.test(oriUrl)) {
+    let hostname = oriUrl.replace(/https?:\/\//, "");
+    hostname = hostname.replace(/\/.*/, "");
+    console.log(oriUrl);
+    console.log(hostname);
     
-    // if an error occurs, eg. the hostname is incorrect!
-    if (error) {
-      console.error(error.message);
-      res.json({
-        error: "invalid url"
-      });
-    } else {
-      // if no error exists
-      console.log(
-        `The ip address is ${address} and the ip version is ${family}`
-      );
-
-      // check if url exist in database
-      const urlExist = await Url.exists({original_url: oriUrl}, async (err, doc) => {
-        if (err) {
-          console.log(err)
-        } else {
-          console.log('is url exist?: ' + !!doc);
-          if (!!doc) {
-            const doc = await Url.findOne({original_url: oriUrl});
-            res.json({
-              original_url: doc.original_url,
-              short_url: doc.short_url
-            })            
+    // lookup the hostname passed as argument
+    dns.lookup(hostname, async (error, address, family) => {
+      
+      // if an error occurs, eg. the hostname is incorrect!
+      if (error) {
+        console.error(error.message);
+        res.json({
+          error: "invalid url"
+        });
+      } else {
+        // if no error exists
+        console.log(
+          `The ip address is ${address} and the ip version is ${family}`
+        );
+  
+        // check if url exist in database
+        const urlExist = await Url.exists({original_url: oriUrl}, async (err, doc) => {
+          if (err) {
+            console.log(err)
           } else {
-            // insert new doc to db
-            const count = await Url.countDocuments({});
-            
-            const newDoc = await Url.create({
-              original_url: oriUrl,
-              short_url: count
-            });
-            console.log("new url has been added to database")
-
-            const doc = await Url.findOne({original_url: oriUrl});
-            res.json({
-              original_url: doc.original_url,
-              short_url: doc.short_url
-            });
-          }      
-        }
-      });
-    }
-  });
+            console.log('is url exist?: ' + !!doc);
+            if (!!doc) {
+              const doc = await Url.findOne({original_url: oriUrl});
+              res.json({
+                original_url: doc.original_url,
+                short_url: doc.short_url
+              })            
+            } else {
+              // insert new doc to db
+              const count = await Url.countDocuments({});
+              
+              const newDoc = await Url.create({
+                original_url: oriUrl,
+                short_url: count
+              });
+              console.log("new url has been added to database")
+  
+              const doc = await Url.findOne({original_url: oriUrl});
+              res.json({
+                original_url: doc.original_url,
+                short_url: doc.short_url
+              });
+            }      
+          }
+        });
+      }
+    });
+  } else {
+    res.json({
+      error: "invalid url"
+    });
+  }
 });
 
 app.get('/api/shorturl/:shortUrl', async (req, res) => {
